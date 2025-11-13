@@ -1,0 +1,97 @@
+import math
+import random
+
+
+
+FUNCTIONS = ["+", "-", "*", "/", "sin", "cos", "exp", "log"]
+dataset = [(x, math.sin(x)) for x in range(-10, 11)]  # Example dataset: sin(x)
+
+
+def generate_random_expression(max_depth=3):
+    """Generate a random mathematical expression"""
+    if max_depth == 0:
+        return str(round(random.uniform(-5, 5), 2)) if random.random() < 0.5 else "x"
+    func = random.choice(FUNCTIONS)
+    if func in ["+", "-", "*", "/"]:
+        return f"({generate_random_expression(max_depth-1)} {func} {generate_random_expression(max_depth-1)})"
+    else:
+        return f"{func}({generate_random_expression(max_depth-1)})"
+
+def safe_eval(expr, x):
+    """Safely evaluate an expression with given x"""
+    try:
+        val = eval(expr, {
+            "x": x,
+            "sin": math.sin,
+            "cos": math.cos,
+            "exp": lambda v: math.exp(v) if abs(v) < 50 else float("inf"),
+            "log": lambda v: math.log(abs(v) + 1e-6)
+        })
+        if abs(val) > 1e6 or math.isnan(val) or math.isinf(val):
+            return float("inf")
+        return val
+    except Exception:
+        return float("inf")
+
+def compute_error(expr, dataset):
+    """Compute sum of squared errors safely"""
+    error = 0.0
+    for x, y in dataset:
+        pred = safe_eval(expr, x)
+        if pred == float("inf"):
+            return float("inf")
+        error += (pred - y) ** 2
+    return error
+
+def fitness(expr, dataset):
+    """Fitness = inverse of error"""
+    error = compute_error(expr, dataset)
+    return 1 / (1 + error)
+
+def mutate(expr):
+    """Random mutation"""
+    return generate_random_expression()
+
+def crossover(expr1, expr2):
+    """Simple crossover"""
+    return expr1 if random.random() < 0.5 else expr2
+
+
+def GEA_SymbolicRegression(dataset, population_size=20, generations=30, crossover_rate=0.7, mutation_rate=0.3):
+    population = [generate_random_expression() for _ in range(population_size)]
+    best_fitness_progress = []
+
+    for gen in range(generations):
+        scored = [(expr, fitness(expr, dataset)) for expr in population]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        best_fitness_progress.append(scored[0][1])
+
+        new_population = [expr for expr, _ in scored[:2]]
+        while len(new_population) < population_size:
+            parent1 = random.choice(scored)[0]
+            parent2 = random.choice(scored)[0]
+            child = crossover(parent1, parent2) if random.random() < crossover_rate else parent1
+            if random.random() < mutation_rate:
+                child = mutate(child)
+            new_population.append(child)
+        population = new_population
+
+    scored = [(expr, fitness(expr, dataset)) for expr in population]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:5]
+
+
+best_solutions = GEA_SymbolicRegression(dataset)
+
+print("Top 5 Evolved Expressions for sin(x):")
+for i, (expr, fit) in enumerate(best_solutions, 1):
+    print(f"{i}. Expression: {expr} | Fitness: {fit:.5f}")
+
+output:
+
+Top 5 Evolved Expressions for sin(x):
+1. Expression: cos(((-3.77 - 4.0) - (0.17 - x))) | Fitness: 0.92481
+2. Expression: cos(((-3.77 - 4.0) - (0.17 - x))) | Fitness: 0.92481
+3. Expression: cos(((-3.77 - 4.0) - (0.17 - x))) | Fitness: 0.92481
+4. Expression: cos(log(exp(4.83))) | Fitness: 0.08856
+5. Expression: cos(log(exp(-4.57))) | Fitness: 0.08752
