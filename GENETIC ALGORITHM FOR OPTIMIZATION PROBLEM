@@ -1,0 +1,97 @@
+import random
+
+# --- Genetic Algorithm Parameters ---
+POP_SIZE = 50
+GENS = 1000
+MUT_RATE = 0.1
+
+# --- Design constraints ---
+W_MIN, W_MAX = 10, 30   # width range (cm)
+H_MIN, H_MAX = 30, 60   # height range (cm)
+T_MIN, T_MAX = 1, 5     # web thickness range (cm)
+STRESS_LIMIT = 250      # MPa (maximum allowed stress)
+
+# --- Fitness Function ---
+# Aim: minimize cross-sectional area while keeping stress under limit
+def fitness(w, h, t):
+    area = w * t + 2 * (h * t)          # Simplified cross-sectional area
+    stress = (1000 * h) / (w * t + 1e-6)  # Simplified stress relation
+    penalty = 0
+    if stress > STRESS_LIMIT:
+        penalty = (stress - STRESS_LIMIT) * 0.01
+    return 1 / (area + penalty)
+
+# --- Random Design Generator ---
+def random_design():
+    return [
+        random.uniform(W_MIN, W_MAX),
+        random.uniform(H_MIN, H_MAX),
+        random.uniform(T_MIN, T_MAX)
+    ]
+
+# --- Crossover Function ---
+def crossover(p1, p2):
+    point = random.randint(0, 2)
+    return p1[:point] + p2[point:]
+
+# --- Mutation Function ---
+def mutate(ind):
+    if random.random() < MUT_RATE:
+        ind[random.randint(0, 2)] += random.uniform(-1, 1)
+    # keep within bounds
+    return [
+        max(W_MIN, min(ind[0], W_MAX)),
+        max(H_MIN, min(ind[1], H_MAX)),
+        max(T_MIN, min(ind[2], T_MAX))
+    ]
+
+# --- Initialize population ---
+pop = [random_design() for _ in range(POP_SIZE)]
+
+# --- Evolution Process ---
+for gen in range(1, GENS + 1):
+    fitness_values = [fitness(*ind) for ind in pop]
+    best_index = fitness_values.index(max(fitness_values))
+    best = pop[best_index]
+
+    if gen in [50, 100, 1000]:
+        print(f"Generation {gen}: Best fitness = {max(fitness_values):.6f}")
+
+    # Selection + Crossover + Mutation
+    new_pop = []
+    for _ in range(POP_SIZE):
+        p1, p2 = random.choices(pop, weights=fitness_values, k=2)
+        child = crossover(p1, p2)
+        child = mutate(child)
+        new_pop.append(child)
+    pop = new_pop
+
+# --- Final Best Design ---
+best_fitness = max(fitness_values)
+best_design = pop[fitness_values.index(best_fitness)]
+
+w, h, t = best_design
+area = w * t + 2 * (h * t)
+stress = (1000 * h) / (w * t + 1e-6)
+
+print("\nBest Design found:")
+print(f"Width w = {w:.2f} cm")
+print(f"Height h = {h:.2f} cm")
+print(f"Web thickness t = {t:.2f} cm")
+print(f"Cross-sectional Area = {area:.2f} cm²")
+print(f"Max stress = {stress:.2f} MPa")
+print(f"Fitness (1/Area) = {best_fitness:.6f}")
+
+OUTPUT:
+
+Generation 50: Best fitness = 0.007062
+Generation 100: Best fitness = 0.007024
+Generation 1000: Best fitness = 0.007309
+
+Best Design found:
+Width w = 19.76 cm
+Height h = 49.74 cm
+Web thickness t = 1.59 cm
+Cross-sectional Area = 136.82 cm²
+Max stress = 249.74 MPa
+Fitness (1/Area) = 0.007309
