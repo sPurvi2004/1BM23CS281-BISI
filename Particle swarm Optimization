@@ -1,0 +1,174 @@
+import torch
+import torch.nn as nn
+import math
+
+# Generate dataset for sin(x)
+x = torch.linspace(-math.pi, math.pi, 200).view(-1, 1)
+y = torch.sin(x)
+
+# Neural network
+model = nn.Sequential(
+    nn.Linear(1, 16),
+    nn.Tanh(),
+    nn.Linear(16, 16),
+    nn.Tanh(),
+    nn.Linear(16, 1)
+)
+
+loss_fn = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+# Training
+best_loss = float("inf")
+num_iters = 100
+
+for i in range(1, num_iters + 1):
+    optimizer.zero_grad()
+    y_pred = model(x)
+    loss = loss_fn(y_pred, y)
+    loss.backward()
+    optimizer.step()
+    best_loss = min(best_loss, loss.item())
+    
+    print(f"Iter {i}/100, Best Loss: {best_loss:.6f}")
+
+# OPTIONAL plot
+import matplotlib.pyplot as plt
+x_np = x.detach().numpy()
+y_np = y.detach().numpy()
+pred_np = y_pred.detach().numpy()
+
+plt.plot(x_np, y_np, label="True Function", linewidth=2)
+plt.plot(x_np, pred_np, '--', label="NN Prediction")
+plt.legend()
+plt.show()
+
+OUTPUT:
+
+Iter 1/100, Best Loss: 0.714513
+Iter 2/100, Best Loss: 0.499958
+Iter 3/100, Best Loss: 0.340913
+Iter 4/100, Best Loss: 0.230968
+Iter 5/100, Best Loss: 0.162651
+Iter 6/100, Best Loss: 0.127452
+Iter 7/100, Best Loss: 0.116243
+Iter 8/100, Best Loss: 0.116243
+Iter 9/100, Best Loss: 0.116243
+Iter 10/100, Best Loss: 0.116243
+Iter 11/100, Best Loss: 0.116243
+Iter 12/100, Best Loss: 0.116243
+Iter 13/100, Best Loss: 0.116243
+Iter 14/100, Best Loss: 0.112566
+Iter 15/100, Best Loss: 0.102450
+Iter 16/100, Best Loss: 0.094002
+Iter 17/100, Best Loss: 0.087882
+Iter 18/100, Best Loss: 0.084013
+Iter 19/100, Best Loss: 0.081872
+Iter 20/100, Best Loss: 0.080817
+Iter 21/100, Best Loss: 0.080316
+Iter 22/100, Best Loss: 0.080040
+Iter 23/100, Best Loss: 0.079823
+Iter 24/100, Best Loss: 0.079571
+Iter 25/100, Best Loss: 0.079185
+Iter 26/100, Best Loss: 0.078518
+Iter 27/100, Best Loss: 0.077410
+Iter 28/100, Best Loss: 0.075768
+Iter 29/100, Best Loss: 0.073633
+Iter 30/100, Best Loss: 0.071200
+Iter 31/100, Best Loss: 0.068758
+Iter 32/100, Best Loss: 0.066601
+Iter 33/100, Best Loss: 0.064931
+Iter 34/100, Best Loss: 0.063808
+Iter 35/100, Best Loss: 0.063151
+Iter 36/100, Best Loss: 0.062800
+Iter 37/100, Best Loss: 0.062585
+Iter 38/100, Best Loss: 0.062379
+Iter 39/100, Best Loss: 0.062109
+Iter 40/100, Best Loss: 0.061736
+Iter 41/100, Best Loss: 0.061231
+Iter 42/100, Best Loss: 0.060566
+Iter 43/100, Best Loss: 0.059737
+Iter 44/100, Best Loss: 0.058784
+Iter 45/100, Best Loss: 0.057795
+Iter 46/100, Best Loss: 0.056878
+Iter 47/100, Best Loss: 0.056118
+Iter 48/100, Best Loss: 0.055543
+Iter 49/100, Best Loss: 0.055114
+Iter 50/100, Best Loss: 0.054754
+Iter 51/100, Best Loss: 0.054388
+Iter 52/100, Best Loss: 0.053973
+Iter 53/100, Best Loss: 0.053504
+Iter 54/100, Best Loss: 0.052997
+Iter 55/100, Best Loss: 0.052469
+Iter 56/100, Best Loss: 0.051928
+Iter 57/100, Best Loss: 0.051374
+Iter 58/100, Best Loss: 0.050818
+Iter 59/100, Best Loss: 0.050279
+Iter 60/100, Best Loss: 0.049777
+Iter 61/100, Best Loss: 0.049317
+Iter 62/100, Best Loss: 0.048877
+Iter 63/100, Best Loss: 0.048426
+Iter 64/100, Best Loss: 0.047934
+Iter 65/100, Best Loss: 0.047397
+Iter 66/100, Best Loss: 0.046830
+Iter 67/100, Best Loss: 0.046259
+Iter 68/100, Best Loss: 0.045701
+Iter 69/100, Best Loss: 0.045157
+Iter 70/100, Best Loss: 0.044623
+Iter 71/100, Best Loss: 0.044091
+Iter 72/100, Best Loss: 0.043556
+Iter 73/100, Best Loss: 0.043010
+Iter 74/100, Best Loss: 0.042442
+Iter 75/100, Best Loss: 0.041846
+Iter 76/100, Best Loss: 0.041221
+Iter 77/100, Best Loss: 0.040579
+Iter 78/100, Best Loss: 0.039930
+Iter 79/100, Best Loss: 0.039280
+Iter 80/100, Best Loss: 0.038621
+Iter 81/100, Best Loss: 0.037944
+Iter 82/100, Best Loss: 0.037242
+Iter 83/100, Best Loss: 0.036517
+Iter 84/100, Best Loss: 0.035771
+Iter 85/100, Best Loss: 0.035005
+Iter 86/100, Best Loss: 0.034224
+Iter 87/100, Best Loss: 0.033434
+Iter 88/100, Best Loss: 0.032635
+Iter 89/100, Best Loss: 0.031821
+Iter 90/100, Best Loss: 0.030983
+Iter 91/100, Best Loss: 0.030119
+Iter 92/100, Best Loss: 0.029237
+Iter 93/100, Best Loss: 0.028349
+Iter 94/100, Best Loss: 0.027458
+Iter 95/100, Best Loss: 0.026569
+Iter 96/100, Best Loss: 0.025686
+Iter 97/100, Best Loss: 0.024809
+Iter 98/100, Best Loss: 0.023935
+Iter 99/100, Best Loss: 0.023070
+Iter 100/100, Best Loss: 0.022224
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
