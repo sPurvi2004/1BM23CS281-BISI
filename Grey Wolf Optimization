@@ -1,0 +1,174 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from google.colab import files
+import random
+
+# =============================
+# Step 1: Upload image
+# =============================
+uploaded = files.upload()
+image_path = list(uploaded.keys())[0]
+
+# Load and resize image
+img = cv2.imread(image_path)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img = cv2.resize(img, (400, 400))
+
+# Convert to grayscale and blur
+gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+# =============================
+# Step 2: Define fitness function for GWO
+# =============================
+
+def edge_quality_metric(edges):
+    """Simple metric: combination of edge density and continuity."""
+    edge_density = np.sum(edges > 0) / edges.size
+    sobelx = cv2.Sobel(edges, cv2.CV_64F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(edges, cv2.CV_64F, 0, 1, ksize=3)
+    gradient_strength = np.mean(np.sqrt(sobelx**2 + sobely**2))
+    return edge_density * 0.6 + gradient_strength * 0.4
+
+
+def objective_function(params):
+    t1, t2 = params
+    if t1 >= t2:
+        return -1e6
+    edges = cv2.Canny(blurred, int(t1), int(t2))
+    score = edge_quality_metric(edges)
+    return score
+
+# =============================
+# Step 3: Grey Wolf Optimization (GWO)
+# =============================
+
+def GWO(obj_func, lb, ub, dim=2, num_wolves=8, max_iter=20):
+    wolves = np.random.uniform(lb, ub, (num_wolves, dim))
+    fitness = np.array([obj_func(w) for w in wolves])
+
+    alpha, beta, delta = np.zeros(dim), np.zeros(dim), np.zeros(dim)
+    alpha_score, beta_score, delta_score = -np.inf, -np.inf, -np.inf
+
+    for i in range(num_wolves):
+        if fitness[i] > alpha_score:
+            delta_score, delta = beta_score, beta.copy()
+            beta_score, beta = alpha_score, alpha.copy()
+            alpha_score, alpha = fitness[i], wolves[i].copy()
+        elif fitness[i] > beta_score:
+            delta_score, delta = beta_score, beta.copy()
+            beta_score, beta = fitness[i], wolves[i].copy()
+        elif fitness[i] > delta_score:
+            delta_score, delta = fitness[i], wolves[i].copy()
+
+    for iter in range(max_iter):
+        a = 2 - iter * (2 / max_iter)
+
+        for i in range(num_wolves):
+            for j in range(dim):
+                r1, r2 = random.random(), random.random()
+                A1 = 2 * a * r1 - a
+                C1 = 2 * r2
+                D_alpha = abs(C1 * alpha[j] - wolves[i][j])
+                X1 = alpha[j] - A1 * D_alpha
+
+                r1, r2 = random.random(), random.random()
+                A2 = 2 * a * r1 - a
+                C2 = 2 * r2
+                D_beta = abs(C2 * beta[j] - wolves[i][j])
+                X2 = beta[j] - A2 * D_beta
+
+                r1, r2 = random.random(), random.random()
+                A3 = 2 * a * r1 - a
+                C3 = 2 * r2
+                D_delta = abs(C3 * delta[j] - wolves[i][j])
+                X3 = delta[j] - A3 * D_delta
+
+                wolves[i][j] = (X1 + X2 + X3) / 3
+
+            wolves[i] = np.clip(wolves[i], lb, ub)
+            fitness[i] = obj_func(wolves[i])
+
+        for i in range(num_wolves):
+            if fitness[i] > alpha_score:
+                delta_score, delta = beta_score, beta.copy()
+                beta_score, beta = alpha_score, alpha.copy()
+                alpha_score, alpha = fitness[i], wolves[i].copy()
+            elif fitness[i] > beta_score:
+                delta_score, delta = beta_score, beta.copy()
+                beta_score, beta = fitness[i], wolves[i].copy()
+            elif fitness[i] > delta_score:
+                delta_score, delta = fitness[i], wolves[i].copy()
+
+        print(f"Iteration {iter+1}/{max_iter}, Best score: {alpha_score:.4f}, Thresholds: {alpha}")
+
+    return alpha, alpha_score
+
+# =============================
+# Step 4: Run GWO
+# =============================
+best_thresholds, best_score = GWO(objective_function,
+                                  lb=[50, 100],
+                                  ub=[150, 250],
+                                  dim=2,
+                                  num_wolves=10,
+                                  max_iter=15)
+
+t1, t2 = map(int, best_thresholds)
+print(f"\n Optimized Canny thresholds: {t1}, {t2}")
+
+# =============================
+# Step 5: Apply optimized detection
+# =============================
+edges = cv2.Canny(blurred, t1, t2)
+edges_dilated = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
+mask = edges_dilated.astype(bool)
+
+darkened = img.copy().astype(np.float32)
+darkened[mask] *= 0.5
+darkened = np.clip(darkened, 0, 255).astype(np.uint8)
+
+highlighted = img.copy().astype(np.float32)
+highlighted[mask] *= 1.8
+highlighted = np.clip(highlighted, 0, 255).astype(np.uint8)
+
+# =============================
+# Step 6: Display results
+# =============================
+plt.figure(figsize=(12,4))
+plt.subplot(1,3,1)
+plt.imshow(img)
+plt.title("Original")
+plt.axis("off")
+
+plt.subplot(1,3,2)
+plt.imshow(darkened)
+plt.title(f"Darkened Edges (t1={t1}, t2={t2})")
+plt.axis("off")
+
+plt.subplot(1,3,3)
+plt.imshow(highlighted)
+plt.title(f"Highlighted Edges (t1={t1}, t2={t2})")
+plt.axis("off")
+
+plt.show()
+
+OUTPUT:
+
+Iteration 1/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 2/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 3/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 4/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 5/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 6/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 7/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 8/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 9/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 10/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 11/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 12/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 13/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 14/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+Iteration 15/15, Best score: 13.0192, Thresholds: [122.42869292 197.10575916]
+
